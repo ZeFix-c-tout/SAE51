@@ -1,0 +1,60 @@
+SAÉ 51 – Projet en autonomie : Automatisation de la création de machines (VirtualBox) :
+
+📌 Contexte
+Vous êtes dans la DSI d’une PME qui renouvelle son infrastructure IT. On vous demande de mettre en place un script pour automatiser la création et la gestion de machines virtuelles avec VirtualBox (via la commande VBoxManage).
+
+🎯 Objectifs
+
+Créer un script (Linux/bash ou Windows/batch) appelé genMV.sh ou genMV.bat.
+
+Rédiger un document usage.md expliquant l’utilisation du script, ses limites, et les problèmes rencontrés.
+
+🛠️ Fonctionnalités attendues du script
+
+Création de machine (exemple : Debian64, 4096 Mo RAM, 64 Go disque, réseau NAT, boot PXE).
+
+Suppression d’une machine existante si elle porte le même nom.
+
+Démarrage de la machine en PXE et configuration d’un serveur TFTP pour installer Debian.
+
+Gestion des arguments (actions à lancer via une lettre + nom de la VM) :
+
+L → Lister les VM
+
+N → Créer une VM
+
+S → Supprimer une VM
+
+D → Démarrer une VM
+
+A → Arrêter une VM
+
+Ajout de métadonnées : date de création + utilisateur (stockées avec VBoxManage setextradata).
+
+Affichées lors du L (liste des machines).
+
+🔧 Fonctionnalités optionnelles
+
+Login automatique d’une VM.
+
+Installation automatisée via fichier pre-seed (Debian).
+
+Toute autre amélioration proposée par l’équipe.
+
+📄 Contraintes
+
+Travail en binôme.
+
+Script incrémental (plusieurs versions, mais seul le plus abouti est rendu).
+
+Gestion des erreurs obligatoire.
+
+Rapport (usage.md) clair et documenté.
+
+📚 Ressources fournies
+
+Documentation VirtualBox (VBoxManage, autologon, preseed).
+
+Aide sur Markdown pour rédiger le rapport.
+
+Notions de scripting (bash & batch), gestion des arguments, codes d’erreurs, parsing de fichiers.

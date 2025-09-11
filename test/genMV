@@ -1,0 +1,70 @@
+if [ $# -eq 0 ]; then
+  echo "Usage: $0 -L|-N|-S|-D|-A|-T"
+  exit 1
+fi
+
+# Boucle sur les options
+while getopts "LNSDAT" opt; do
+	case $opt in
+    L)
+    	echo "Liste des VM enregistrées :"
+    	vboxmanage list vms 
+    	;;
+    N)
+    	echo "Création d'une nouvelle VM..."
+      # Exemple minimal, tu peux adapter
+		NUM=$(( $(vboxmanage list vms | wc -l) + 1 ))
+		VMNAME="VM$NUM"
+		RAM="4096"
+		DISK="65536"
+		ISO_PATH="debian-13.1.0-amd64-netinst.iso"
+
+		# Créer la VM
+
+
+		echo "$VMNAME Création de la vm"
+		vboxmanage createvm --name "$VMNAME" --ostype Debian_64 --register
+
+		echo "$VMNAME Configuration ram, nat et boot "
+		vboxmanage modifyvm "$VMNAME" --memory $RAM --nic1 nat --boot1 disk
+
+		echo "$VMNAME Création du disk virtuel"
+		vboxmanage createmedium disk --filename "/home/user/VirtualBox VMs/${VMNAME}_disk.vdi" --size $DISK
+
+		echo "$VMNAME Création contrôleur SATA + attachement de disk"
+		vboxmanage storagectl "$VMNAME" --name "SATA Controller" --add sata --controller IntelAhci
+		vboxmanage storageattach "$VMNAME" --storagectl "SATA Controller" --port 0 --device 0 --type hdd --medium "/home/user/VirtualBox VMs/${VMNAME}_disk.vdi"
+
+		echo "$VMNAME Attachement ISO pour installation"
+		vboxmanage storageattach "$VMNAME" --storagectl "SATA Controller" --port 1 --device 0 --type dvddrive --medium "$ISO_PATH"
+
+		echo "$VMNAME La VM a été créée avec succès"
+    	;;
+	S)
+		read -p "Nom de la VM à supprimer : " VMNAME
+		echo "Suppression de la VM $VMNAME..."
+		vboxmanage unregistervm "$VMNAME" --delete
+    	;;
+    D)
+    	read -p "Nom de la VM à démarrer : " VMNAME
+    	echo "Démarrage de $VMNAME..."
+    	vboxmanage startvm "$VMNAME" --type gui
+    	;;
+    A)
+    	read -p "Nom de la VM à arrêter : " VMNAME
+    	echo "Arrêt de $VMNAME..."
+    	vboxmanage controlvm "$VMNAME" poweroff
+    	;;
+	T)
+		for VM in $(vboxmanage list vms | awk '{print $1}' | tr -d '"'); do
+			echo "Suppression de $VM ..."
+    		vboxmanage unregistervm "$VM" --delete
+		done
+    	;;
+    *)
+    	echo "Option invalide ! Usage : $0 -L|-N|-S|-D|-A|-T"
+    	exit 1
+    	;;
+  esac
+done
+
