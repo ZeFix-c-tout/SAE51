@@ -8,32 +8,70 @@ while getopts "LNS:D:A:T" opt; do
 
     N)
     	echo "Création d'une nouvelle VM..."
-      # Exemple minimal, tu peux adapter
+
 		NUM=$(( $(vboxmanage list vms | wc -l) + 1 ))
 		VMNAME="VM$NUM"
 		RAM="4096"
 		DISK="65536"
-		ISO_PATH="debian-13.1.0-amd64-netinst.iso"
+		ISO_PATH="*.iso"
 
 		# Créer la VM
 
-		echo "$VMNAME Création de la vm"
-		vboxmanage createvm --name "$VMNAME" --ostype Debian_64 --register
+		echo "$VMNAME Création de la VM"
+		vboxmanage createvm --name "$VMNAME" --ostype Debian_64 --register >/dev/null
+		if [ $? -ne 0 ]; then
+			erreur=$?
+			echo erreur
+			echo "Erreur : impossible de créer la VM !"
+			exit 1
+		fi
 
-		echo "$VMNAME Configuration ram, nat et boot "
-		vboxmanage modifyvm "$VMNAME" --memory $RAM --nic1 nat --boot1 disk
+		echo "$VMNAME Configuration RAM, NAT et boot"
+		vboxmanage modifyvm "$VMNAME" --memory $RAM --nic1 nat --boot1 disk >/dev/null
+		if [ $? -ne 0 ]; then
+			erreur=$?
+			echo erreur
+			echo "Erreur : impossible de configurer la VM !"
+			exit 1
+		fi
 
-		echo "$VMNAME Création du disk virtuel"
-		vboxmanage createmedium disk --filename "/home/user/VirtualBox VMs/${VMNAME}_disk.vdi" --size $DISK
+		echo "$VMNAME Création du disque virtuel"
+		vboxmanage createmedium disk --filename "/home/user/VirtualBox VMs/${VMNAME}_disk.vdi" --size $DISK >/dev/null
+		if [ $? -ne 0 ]; then
+			erreur=$?
+			echo erreur
+			echo "Erreur : impossible de créer le disque !"
+			exit 1
+		fi
 
-		echo "$VMNAME Création contrôleur SATA + attachement de disk"
-		vboxmanage storagectl "$VMNAME" --name "SATA Controller" --add sata --controller IntelAhci
-		vboxmanage storageattach "$VMNAME" --storagectl "SATA Controller" --port 0 --device 0 --type hdd --medium "/home/user/VirtualBox VMs/${VMNAME}_disk.vdi"
+		echo "$VMNAME Création du contrôleur SATA et attachement du disque"
+		vboxmanage storagectl "$VMNAME" --name "SATA Controller" --add sata --controller IntelAhci >/dev/null
+		if [ $? -ne 0 ]; then
+			erreur=$?
+			echo erreur
+			echo "Erreur : impossible de créer le contrôleur SATA !"
+			exit 1
+		fi
 
-		echo "$VMNAME Attachement ISO pour installation"
-		vboxmanage storageattach "$VMNAME" --storagectl "SATA Controller" --port 1 --device 0 --type dvddrive --medium "$ISO_PATH"
+		vboxmanage storageattach "$VMNAME" --storagectl "SATA Controller" --port 0 --device 0 --type hdd --medium "/home/user/VirtualBox VMs/${VMNAME}_disk.vdi" >/dev/null
+		if [ $? -ne 0 ]; then
+			erreur=$?
+			echo erreur
+			echo "Erreur : impossible d’attacher le disque !"
+			exit 1
+		fi
+
+		echo "$VMNAME Attachement de l'ISO pour installation"
+		vboxmanage storageattach "$VMNAME" --storagectl "SATA Controller" --port 1 --device 0 --type dvddrive --medium ~/Downloads/$ISO_PATH >/dev/null
+		if [ $? -ne 0 ]; then
+			erreur=$?
+			echo erreur
+			echo "Erreur : impossible d’attacher l'ISO ! Veuillez placer l'ISO dans ~/Downloads"
+			exit 1
+		fi
 
 		echo "$VMNAME La VM a été créée avec succès"
+
     	;;
 
     S)
