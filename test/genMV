@@ -1,79 +1,96 @@
+# Si aucun argument n'est fourni cela affichera le help
+if [ $# -eq 0 ]; then
+  echo "======GUIDE D'UTILISATION======"
+  echo ""
+  echo "-L : Liste toutes les VM"
+  echo "-N : Création d'une VM"
+  echo "-T : Supprime toute les VM existantes"
+  echo "-S [VM] : Supprime une VM"
+  echo "-D [VM] : Démarre une VM"
+  echo "-A [VM] : Arrete une VM"
+  echo ""
+  exit 1
+fi
+
+# Boucle qui analyse les options passées en argument (-L, -N, -S, -D, -A, -T)
 while getopts "LNS:D:A:T" opt; do
   case $opt in
-
+    # Option -L : liste toutes les VM enregistrées dans VirtualBox
     L)
       echo "Liste des VM enregistrées :"
       vboxmanage list vms
       ;;
-
+    # Option -N : création d’une nouvelle VM
     N)
-    	echo "Création d'une nouvelle VM..."
+      echo "Création d'une nouvelle VM..."
 
-		NUM=$(( $(vboxmanage list vms | wc -l) + 1 ))
-		VMNAME="VM$NUM"
-		RAM="4096"
-		DISK="65536"
-		ISO_PATH="*.iso"
+      NUM=$(( $(vboxmanage list vms | wc -l) + 1 ))
+      VMNAME="VM$NUM"
+      RAM="4096"                # Taille mémoire en MB
+      DISK="65536"		# Taille disque en MB (64 Go)
+      ISO_PATH="*.iso"		# ISO utilisé pour l’installation
 
-		# Créer la VM
+      echo "$VMNAME Création de la VM"
+      vboxmanage createvm --name "$VMNAME" --ostype Debian_64 --register >/dev/null
+      if [ $? -ne 0 ]; then
+      	erreur=$?
+	echo erreur
+	echo "Erreur : impossible de créer la VM !"
+	exit 1
+      fi
 
-		echo "$VMNAME Création de la VM"
-		vboxmanage createvm --name "$VMNAME" --ostype Debian_64 --register >/dev/null
-		if [ $? -ne 0 ]; then
-			erreur=$?
-			echo erreur
-			echo "Erreur : impossible de créer la VM !"
-			exit 1
-		fi
+      # Configuration mémoire, réseau et ordre de boot
+      echo "$VMNAME Configuration RAM, NAT et boot"
+      vboxmanage modifyvm "$VMNAME" --memory $RAM --nic1 nat --boot1 disk >/dev/null
+      if [ $? -ne 0 ]; then
+      	erreur=$?
+      	echo erreur
+      	echo "Erreur : impossible de configurer la VM !"
+      	exit 1
+      fi
 
-		echo "$VMNAME Configuration RAM, NAT et boot"
-		vboxmanage modifyvm "$VMNAME" --memory $RAM --nic1 nat --boot1 disk >/dev/null
-		if [ $? -ne 0 ]; then
-			erreur=$?
-			echo erreur
-			echo "Erreur : impossible de configurer la VM !"
-			exit 1
-		fi
+      # Création du disque virtuel
+      echo "$VMNAME Création du disque virtuel"
+      vboxmanage createmedium disk --filename "/home/user/VirtualBox VMs/${VMNAME}_disk.vdi" --size $DISK >/dev/null
+      if [ $? -ne 0 ]; then
+      	erreur=$?
+      	echo erreur
+      	echo "Erreur : impossible de créer le disque !"
+      	exit 1
+      fi
 
-		echo "$VMNAME Création du disque virtuel"
-		vboxmanage createmedium disk --filename "/home/user/VirtualBox VMs/${VMNAME}_disk.vdi" --size $DISK >/dev/null
-		if [ $? -ne 0 ]; then
-			erreur=$?
-			echo erreur
-			echo "Erreur : impossible de créer le disque !"
-			exit 1
-		fi
+      # Création du contrôleur SATA + attachement disque
+      echo "$VMNAME Création du contrôleur SATA et attachement du disque"
+      vboxmanage storagectl "$VMNAME" --name "SATA Controller" --add sata --controller IntelAhci >/dev/null
+      if [ $? -ne 0 ]; then
+      	erreur=$?
+      	echo erreur
+      	echo "Erreur : impossible de créer le contrôleur SATA !"
+      	exit 1
+      fi
 
-		echo "$VMNAME Création du contrôleur SATA et attachement du disque"
-		vboxmanage storagectl "$VMNAME" --name "SATA Controller" --add sata --controller IntelAhci >/dev/null
-		if [ $? -ne 0 ]; then
-			erreur=$?
-			echo erreur
-			echo "Erreur : impossible de créer le contrôleur SATA !"
-			exit 1
-		fi
+      vboxmanage storageattach "$VMNAME" --storagectl "SATA Controller" --port 0 --device 0 --type hdd --medium "/home/user/VirtualBox VMs/${VMNAME}_disk.vdi" >/dev/null
+      if [ $? -ne 0 ]; then
+      	erreur=$?
+      	echo erreur
+      	echo "Erreur : impossible d’attacher le disque !"
+      	exit 1
+      fi
 
-		vboxmanage storageattach "$VMNAME" --storagectl "SATA Controller" --port 0 --device 0 --type hdd --medium "/home/user/VirtualBox VMs/${VMNAME}_disk.vdi" >/dev/null
-		if [ $? -ne 0 ]; then
-			erreur=$?
-			echo erreur
-			echo "Erreur : impossible d’attacher le disque !"
-			exit 1
-		fi
+      # Attachement de l’ISO (CD virtuel pour installer Debian)
+      echo "$VMNAME Attachement de l'ISO pour installation"
+      vboxmanage storageattach "$VMNAME" --storagectl "SATA Controller" --port 1 --device 0 --type dvddrive --medium ~/Downloads/$ISO_PATH >/dev/null
+      if [ $? -ne 0 ]; then
+      	erreur=$?
+      	echo erreur
+      	echo "Erreur : impossible d’attacher l'ISO ! Veuillez placer l'ISO dans ~/Downloads"
+      	exit 1
+      fi
 
-		echo "$VMNAME Attachement de l'ISO pour installation"
-		vboxmanage storageattach "$VMNAME" --storagectl "SATA Controller" --port 1 --device 0 --type dvddrive --medium ~/Downloads/$ISO_PATH >/dev/null
-		if [ $? -ne 0 ]; then
-			erreur=$?
-			echo erreur
-			echo "Erreur : impossible d’attacher l'ISO ! Veuillez placer l'ISO dans ~/Downloads"
-			exit 1
-		fi
+      echo "$VMNAME La VM a été créée avec succès"
+      ;;
 
-		echo "$VMNAME La VM a été créée avec succès"
-
-    	;;
-
+    # Option -S : supprime une VM (nom passé en argument)
     S)
       if [ -z "$OPTARG" ]; then
         echo "Erreur : -S attend un nom de VM"
@@ -84,6 +101,7 @@ while getopts "LNS:D:A:T" opt; do
       vboxmanage unregistervm "$VMNAME" --delete
       ;;
 
+    # Option -D : démarre une VM (nom passé en argument)
     D)
       if [ -z "$OPTARG" ]; then
         echo "Erreur : -D attend un nom de VM"
@@ -94,6 +112,7 @@ while getopts "LNS:D:A:T" opt; do
       vboxmanage startvm "$VMNAME" --type gui
       ;;
 
+    # Option -A : arrête une VM (nom passé en argument)
     A)
       if [ -z "$OPTARG" ]; then
         echo "Erreur : -A attend un nom de VM"
@@ -104,17 +123,19 @@ while getopts "LNS:D:A:T" opt; do
       vboxmanage controlvm "$VMNAME" poweroff
       ;;
 
-	T)
-	  echo "Suppression de toutes les VMs..."
-	  vboxmanage list vms | while read -r VM; do
-		  VMNAME="${VM%% *}"
-		  VMNAME="${VMNAME//\"/}"
+    # Option -T : supprime toutes les VM enregistrées
+    T)
+      echo "Suppression de toutes les VMs..."
+      vboxmanage list vms | while read -r VM; do
+          VMNAME="${VM%% *}"
+          VMNAME="${VMNAME//\"/}"
 
-		  echo "Suppression de $VMNAME ..."
-		  vboxmanage unregistervm "$VMNAME" --delete
-	  done
-	  ;;
+          echo "Suppression de $VMNAME ..."
+          vboxmanage unregistervm "$VMNAME" --delete
+     done
+     ;;
 
+    # Cas par défaut : option invalide
     *)
       echo "Option invalide ! Usage: $0 -L|-N|-S <VM>|-D <VM>|-A <VM>|-T"
       exit 1
