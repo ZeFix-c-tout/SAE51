@@ -1,15 +1,11 @@
-if [ $# -eq 0 ]; then
-  echo "Usage: $0 -L|-N|-S|-D|-A|-T"
-  exit 1
-fi
+while getopts "LNS:D:A:T" opt; do
+  case $opt in
 
-# Boucle sur les options
-while getopts "LNSDAT" opt; do
-	case $opt in
     L)
-    	echo "Liste des VM enregistrées :"
-    	vboxmanage list vms 
-    	;;
+      echo "Liste des VM enregistrées :"
+      vboxmanage list vms
+      ;;
+
     N)
     	echo "Création d'une nouvelle VM..."
       # Exemple minimal, tu peux adapter
@@ -20,7 +16,6 @@ while getopts "LNSDAT" opt; do
 		ISO_PATH="debian-13.1.0-amd64-netinst.iso"
 
 		# Créer la VM
-
 
 		echo "$VMNAME Création de la vm"
 		vboxmanage createvm --name "$VMNAME" --ostype Debian_64 --register
@@ -40,31 +35,52 @@ while getopts "LNSDAT" opt; do
 
 		echo "$VMNAME La VM a été créée avec succès"
     	;;
-	S)
-		read -p "Nom de la VM à supprimer : " VMNAME
-		echo "Suppression de la VM $VMNAME..."
-		vboxmanage unregistervm "$VMNAME" --delete
-    	;;
+
+    S)
+      if [ -z "$OPTARG" ]; then
+        echo "Erreur : -S attend un nom de VM"
+        exit 1
+      fi
+      VMNAME="$OPTARG"
+      echo "Suppression de la VM '$VMNAME'..."
+      vboxmanage unregistervm "$VMNAME" --delete
+      ;;
+
     D)
-    	read -p "Nom de la VM à démarrer : " VMNAME
-    	echo "Démarrage de $VMNAME..."
-    	vboxmanage startvm "$VMNAME" --type gui
-    	;;
+      if [ -z "$OPTARG" ]; then
+        echo "Erreur : -D attend un nom de VM"
+        exit 1
+      fi
+      VMNAME="$OPTARG"
+      echo "Démarrage de la VM '$VMNAME'..."
+      vboxmanage startvm "$VMNAME" --type gui
+      ;;
+
     A)
-    	read -p "Nom de la VM à arrêter : " VMNAME
-    	echo "Arrêt de $VMNAME..."
-    	vboxmanage controlvm "$VMNAME" poweroff
-    	;;
+      if [ -z "$OPTARG" ]; then
+        echo "Erreur : -A attend un nom de VM"
+        exit 1
+      fi
+      VMNAME="$OPTARG"
+      echo "Arrêt de la VM '$VMNAME'..."
+      vboxmanage controlvm "$VMNAME" poweroff
+      ;;
+
 	T)
-		for VM in $(vboxmanage list vms | awk '{print $1}' | tr -d '"'); do
-			echo "Suppression de $VM ..."
-    		vboxmanage unregistervm "$VM" --delete
-		done
-    	;;
+	  echo "Suppression de toutes les VMs..."
+	  vboxmanage list vms | while read -r VM; do
+		  VMNAME="${VM%% *}"
+		  VMNAME="${VMNAME//\"/}"
+
+		  echo "Suppression de $VMNAME ..."
+		  vboxmanage unregistervm "$VMNAME" --delete
+	  done
+	  ;;
+
     *)
-    	echo "Option invalide ! Usage : $0 -L|-N|-S|-D|-A|-T"
-    	exit 1
-    	;;
+      echo "Option invalide ! Usage: $0 -L|-N|-S <VM>|-D <VM>|-A <VM>|-T"
+      exit 1
+      ;;
+
   esac
 done
-
